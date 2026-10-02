@@ -1,0 +1,238 @@
+name: roboshop
+
+# ---------------------------------------------------------------
+# RoboShop v2
+#   docker compose up -d --build     build and start everything
+#   docker compose ps                 health of every container
+#   docker compose logs -f cart       follow one service's logs
+#   docker compose down               stop (data volumes are kept)
+#   docker compose down -v            stop and delete all data
+# Shop: http://localhost   RabbitMQ UI: http://localhost:15672
+# ---------------------------------------------------------------
+
+# shared settings for the application containers
+x-app: &app
+  restart: unless-stopped
+  networks: [roboshop]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  # ---------------- databases ----------------
+  mongodb:
+    <<: *app
+    build: ./mongodb
+    image: joindevops/mongodb:v2
+    container_name: mongodb
+    volumes:
+      - mongodb:/data/db # mongodb stores data in /data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  mysql:
+    <<: *app
+    build: ./mysql
+    image: joindevops/mysql:v2
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "RoboShop@1"
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      # connects over TCP as the shipping user and reads the data,
+      # so it only passes after the 60 MB cities import has finished
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -ushipping -pRoboShop@1 -e 'SELECT 1 FROM cities.codes LIMIT 1' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  redis:
+    <<: *app
+    image: redis:8.6-alpine
+    container_name: redis
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    <<: *app
+    image: rabbitmq:4.2-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: roboshop
+      RABBITMQ_DEFAULT_PASS: roboshop123
+    ports:
+      - "15672:15672" # management UI, login roboshop / roboshop123
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---------------- application services ----------------
+  catalogue:
+    <<: *app
+    build: ./catalogue
+    image: joindevops/catalogue:v2
+    container_name: catalogue
+    environment:
+      MONGO_URL: "mongodb://mongodb:27017/catalogue"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  user:
+    <<: *app
+    build: ./user
+    image: joindevops/user:v2
+    container_name: user
+    environment:
+      MONGO_URL: "mongodb://mongodb:27017/users"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  cart:
+    <<: *app
+    build: ./cart
+    image: joindevops/cart:v2
+    container_name: cart
+    environment:
+      REDIS_HOST: redis
+      CATALOGUE_HOST: catalogue
+      CATALOGUE_PORT: 8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      catalogue:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  shipping:
+    <<: *app
+    build: ./shipping
+    image: joindevops/shipping:v2
+    container_name: shipping
+    environment:
+      CART_ENDPOINT: "cart:8080"
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+      cart:
+        condition: service_healthy
+    healthcheck:
+      # Spring Boot actuator health also checks the MySQL connection
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  payment:
+    <<: *app
+    build: ./payment
+    image: joindevops/payment:v2
+    container_name: payment
+    environment:
+      CART_HOST: cart
+      CART_PORT: 8080
+      USER_HOST: user
+      USER_PORT: 8080
+      AMQP_HOST: rabbitmq
+      AMQP_USER: roboshop
+      AMQP_PASS: roboshop123
+      # dummy "payment gateway" call, set to "" if the lab has no internet
+      PAYMENT_GATEWAY: "https://www.google.com/"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      cart:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    <<: *app
+    build: ./frontend
+    image: joindevops/frontend:v2
+    container_name: frontend
+    ports:
+      - "80:8080" # nginx runs as non-root, so it listens on 8080 inside
+    depends_on:
+      catalogue:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      cart:
+        condition: service_healthy
+      shipping:
+        condition: service_healthy
+      payment:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---------------- troubleshooting (not started by default) ----------------
+  # docker compose --profile debug run --rm debug bash
+  debug:
+    build: ./debug
+    image: joindevops/debug:v2
+    container_name: debug
+    profiles: [debug]
+    networks: [roboshop]
+
+networks:
+  roboshop: # all services use this network and find each other by name
+    name: roboshop
+    driver: bridge
+
+volumes:
+  mongodb:
+  redis:
+  mysql:
+  rabbitmq:
