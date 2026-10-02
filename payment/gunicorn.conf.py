@@ -8,6 +8,7 @@ workers = 1
 threads = 4
 timeout = 60
 graceful_timeout = 20
-accesslog = '-'
+# payment.py writes its own JSON access log line per request
+accesslog = None
 errorlog = '-'
 loglevel = 'info'

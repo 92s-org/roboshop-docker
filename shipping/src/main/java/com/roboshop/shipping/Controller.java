@@ -103,10 +103,6 @@ public class Controller {
     @PostMapping(path = "/confirm/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public String confirm(@PathVariable String id, @RequestBody String body) {
         logger.info("confirm id: {}", id);
-        String cart = cartClient.addShipping(id, body);
-        if (cart == null || cart.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "cart not found");
-        }
-        return cart;
+        return cartClient.addShipping(id, body);
     }
 }

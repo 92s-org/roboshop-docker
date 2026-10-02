@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { createClient } from 'redis';
 import pino from 'pino';
@@ -13,7 +14,12 @@ const CATALOGUE_PORT = process.env.CATALOGUE_PORT || '8080';
 const CART_TTL_SECONDS = Number(process.env.CART_TTL_SECONDS || 3600);
 const TAX_RATE = 0.2;
 
-const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    base: { service: 'cart' },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: { level: (label) => ({ level: label }) }
+});
 
 // ---------- Prometheus ----------
 const register = new promClient.Registry();
@@ -59,9 +65,13 @@ async function saveCart(id, cart) {
 }
 
 // returns the product, null if the SKU does not exist, throws if catalogue is down
-async function getProduct(sku) {
+// the request id is passed on so catalogue logs the same id
+async function getProduct(sku, requestId) {
     const url = `http://${CATALOGUE_HOST}:${CATALOGUE_PORT}/product/${encodeURIComponent(sku)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, {
+        headers: { 'X-Request-Id': requestId },
+        signal: AbortSignal.timeout(5000)
+    });
     if (res.status === 404) {
         return null;
     }
@@ -79,8 +89,28 @@ function parseQty(value) {
 // ---------- App ----------
 const app = express();
 app.disable('x-powered-by');
-app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => ['/health', '/metrics'].includes(req.url) } }));
-app.use(express.json());
+// one JSON line per request: method, url, status, duration and a request id.
+// the id comes from nginx (X-Request-Id) so one click can be followed across services
+app.use(pinoHttp({
+    logger,
+    genReqId: (req, res) => {
+        const id = req.headers['x-request-id'] || randomUUID();
+        res.setHeader('X-Request-Id', id);
+        return id;
+    },
+    // quietReqLogger puts requestId on every log line of the request
+    quietReqLogger: true,
+    customAttributeKeys: { reqId: 'requestId', responseTime: 'durationMs' },
+    customLogLevel: (req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
+    customSuccessMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,
+    customErrorMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,
+    serializers: {
+        req: (req) => ({ method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode })
+    },
+    autoLogging: { ignore: (req) => ['/health', '/metrics'].includes(req.url) }
+}));
+app.use(express.json({ limit: '100kb' }));
 
 app.use((req, res, next) => {
     const end = httpDuration.startTimer();
@@ -159,9 +189,13 @@ async function addToCart(req, res) {
 
     let product;
     try {
-        product = await getProduct(req.params.sku);
+        product = await getProduct(req.params.sku, req.id);
     } catch (err) {
         req.log.error({ err }, 'catalogue lookup failed');
+        // 504 = catalogue too slow, 502 = catalogue down or broken
+        if (err.name === 'TimeoutError') {
+            return res.status(504).json({ message: 'catalogue did not answer in time' });
+        }
         return res.status(502).json({ message: 'catalogue not available' });
     }
     if (!product) {
@@ -255,13 +289,31 @@ app.post('/shipping/:id', requireRedis, async (req, res) => {
     res.json(cart);
 });
 
+// path exists but not for this method -> 405 with an Allow header
+app.use((req, res, next) => {
+    const allowed = new Set();
+    for (const layer of app.router.stack) {
+        if (layer.route && layer.match(req.path)) {
+            Object.keys(layer.route.methods).forEach((m) => allowed.add(m.toUpperCase()));
+        }
+    }
+    if (allowed.size === 0) return next();
+    if (allowed.has('GET')) allowed.add('HEAD');
+    res.set('Allow', [...allowed].join(', '));
+    res.status(405).json({ message: `method ${req.method} not allowed on ${req.path}` });
+});
+
 app.use((req, res) => {
     res.status(404).json({ message: `route ${req.method} ${req.path} not found` });
 });
 
+// Express 5 forwards errors thrown in async handlers here
 app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') {
         return res.status(400).json({ message: 'request body is not valid JSON' });
+    }
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({ message: 'request body too large' });
     }
     req.log.error({ err }, 'unhandled error');
     res.status(500).json({ message: 'internal server error' });

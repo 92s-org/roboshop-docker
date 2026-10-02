@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { MongoClient } from 'mongodb';
@@ -10,7 +11,14 @@ const PORT = process.env.USER_SERVER_PORT || 8080;
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongodb:27017/users';
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 
-const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    base: { service: 'user' },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: { level: (label) => ({ level: label }) },
+    // never write passwords to the logs
+    redact: ['password', '*.password']
+});
 
 // ---------- Prometheus ----------
 const register = new promClient.Registry();
@@ -66,13 +74,28 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ---------- App ----------
 const app = express();
 app.disable('x-powered-by');
+// one JSON line per request: method, url, status, duration and a request id.
+// the id comes from nginx (X-Request-Id) so one click can be followed across services
 app.use(pinoHttp({
     logger,
-    autoLogging: { ignore: (req) => ['/health', '/metrics'].includes(req.url) },
-    // keep passwords out of the logs
-    redact: ['req.body.password']
+    genReqId: (req, res) => {
+        const id = req.headers['x-request-id'] || randomUUID();
+        res.setHeader('X-Request-Id', id);
+        return id;
+    },
+    // quietReqLogger puts requestId on every log line of the request
+    quietReqLogger: true,
+    customAttributeKeys: { reqId: 'requestId', responseTime: 'durationMs' },
+    customLogLevel: (req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
+    customSuccessMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,
+    customErrorMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,
+    serializers: {
+        req: (req) => ({ method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode })
+    },
+    autoLogging: { ignore: (req) => ['/health', '/metrics'].includes(req.url) }
 }));
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 app.use((req, res, next) => {
     const end = httpDuration.startTimer();
@@ -193,13 +216,35 @@ app.get('/history/:id', requireDb, async (req, res) => {
     res.json(history);
 });
 
+// path exists but not for this method -> 405 with an Allow header
+app.use((req, res, next) => {
+    const allowed = new Set();
+    for (const layer of app.router.stack) {
+        if (layer.route && layer.match(req.path)) {
+            Object.keys(layer.route.methods).forEach((m) => allowed.add(m.toUpperCase()));
+        }
+    }
+    if (allowed.size === 0) return next();
+    if (allowed.has('GET')) allowed.add('HEAD');
+    res.set('Allow', [...allowed].join(', '));
+    res.status(405).json({ message: `method ${req.method} not allowed on ${req.path}` });
+});
+
 app.use((req, res) => {
     res.status(404).json({ message: `route ${req.method} ${req.path} not found` });
 });
 
+// Express 5 forwards errors thrown in async handlers here
 app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') {
         return res.status(400).json({ message: 'request body is not valid JSON' });
+    }
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({ message: 'request body too large' });
+    }
+    // two registrations with the same name at the same moment hit the unique index
+    if (err.code === 11000) {
+        return res.status(409).json({ message: 'name already exists' });
     }
     req.log.error({ err }, 'unhandled error');
     res.status(500).json({ message: 'internal server error' });

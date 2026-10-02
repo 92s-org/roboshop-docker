@@ -110,7 +110,7 @@ All calls go through the frontend: `http://localhost/api/<service>/<path>`.
 | GET | `/health` | 200 / 503 with Mongo status |
 | GET | `/products` | all products |
 | GET | `/product/:sku` | 404 if unknown |
-| GET | `/products/:category` | 404 if empty |
+| GET | `/products/:category` | `[]` if no products in that category |
 | GET | `/categories` | |
 | GET | `/search/:text` | full-text search |
 | GET | `/ratings/:sku` | `{avg_rating, rating_count}` |
@@ -154,9 +154,89 @@ The GET forms of add/update are kept so old scripts and docs still work.
 ### payment
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/pay/:id` | body = cart → `{orderid}`; 400 invalid cart, 502/503 if a dependency is down |
+| POST | `/pay/:id` | body = cart → 201 `{orderid}`; 400 invalid cart, 502/504 if user service or gateway fails, 503 if the queue is down |
 | GET | `/health` | 200 / 503 with RabbitMQ status |
 | GET | `/metrics` | Prometheus |
+
+---
+
+## Status codes
+
+Every service follows the same rules, and every error body is JSON with a `message`.
+
+| Code | Meaning in RoboShop | Example |
+|---|---|---|
+| 200 | OK | `GET /api/catalogue/products` |
+| 201 | something was created | register, order history entry, payment (`orderid`) |
+| 400 | bad input | broken JSON, qty `abc`, city search with < 3 letters |
+| 401 | wrong login | `POST /api/user/login` with a bad password |
+| 404 | thing or route does not exist | unknown SKU, no cart yet, `/api/cart/nothing` |
+| 405 | path exists, wrong method (with an `Allow` header) | `DELETE /api/catalogue/products` |
+| 409 | conflict with current state | name already taken, out of stock, more than in stock |
+| 413 | request body too large (> 100 KB) | huge register request |
+| 415 | wrong Content-Type | `POST /api/shipping/confirm/x` with `text/plain` |
+| 500 | a bug in our code | unexpected exception, logged with the stack trace |
+| 502 | a service we called is down or broken | stop catalogue, then add to cart |
+| 503 | our own database or queue is down | stop redis, then `GET /api/cart/cart/x`; health endpoints |
+| 504 | a service we called is too slow | cart waits 5 s for catalogue, nginx waits 30 s for any service |
+
+Who answers matters. With catalogue stopped:
+- `GET /api/catalogue/products` → **502 from nginx**, because nginx can't reach catalogue.
+- `POST /api/cart/add/...` → **502 from cart**, because nginx reaches cart fine, but cart can't reach catalogue.
+
+The nginx JSON log shows the difference in `upstreamStatus`.
+
+Payment answers **201 once the order is queued**. If saving the order history or emptying the cart fails after that, it is logged as an error, but the shopper is not told "payment failed" for an order that went through.
+
+Try the 504s yourself: `GO_SLOW=35000` on catalogue (in compose) makes `add to cart` return 504 after 5 s. `/api/catalogue/product/RMC` returns 504 from nginx after 30 s.
+
+---
+
+## Logs
+
+All services write **one JSON object per line to stdout**, so `docker compose logs` shows everything and any log tool (Loki, ELK, CloudWatch) can parse it.
+
+| Service | Logger | Level |
+|---|---|---|
+| frontend | nginx `log_format json` with `upstream`, `upstreamStatus`, `upstreamTime` | - |
+| catalogue, user, cart | pino + pino-http | info = 2xx/3xx, warn = 4xx, error = 5xx |
+| payment | Python logging with a JSON formatter | same |
+| shipping | Spring Boot structured logging (`logstash` format) | same |
+
+Passwords are never logged: the user service redacts them.
+
+```bash
+docker compose logs -f                 # everything
+docker compose logs -f cart payment    # some services
+docker compose logs --since 5m user    # recent only
+```
+
+### Follow one click through every service
+
+nginx gives each request an id and sends it as `X-Request-Id` to the service. Each service passes it on to the services it calls (cart → catalogue, shipping → cart, payment → user and cart). The id is also in the response headers, and you can see it in the browser dev tools.
+
+```bash
+curl -si -XPOST http://localhost/api/cart/add/demo/RMC/1 | grep -i x-request-id
+docker compose logs | grep <that-id>
+```
+
+One checkout, grepped by its id:
+
+```
+frontend   POST /api/shipping/confirm/roboshop 200 upstream=shipping:8080
+shipping   POST /confirm/roboshop 200 41ms
+cart       POST /shipping/roboshop 200
+frontend   POST /api/payment/pay/roboshop 201 upstream=payment:8080
+payment    order 11a68b3c-... queued
+user       GET /check/roboshop 200
+user       POST /order/roboshop 201
+cart       DELETE /cart/roboshop 200
+payment    POST /pay/roboshop 201
+```
+
+You can also send your own id: `curl -H 'X-Request-Id: lab-42' ...`.
+
+Health checks and `/metrics` are not logged, to keep the noise down.
 
 ---
 
