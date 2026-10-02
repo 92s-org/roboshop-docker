@@ -7,7 +7,7 @@ const STACK = [
     ['Node.js 24', 'catalogue · user · cart'],
     ['Python 3.14', 'payment'],
     ['Java 25', 'shipping'],
-    ['MongoDB 8', 'products · users'],
+    ['MongoDB 7', 'products · users'],
     ['MySQL 8.4', 'cities'],
     ['Redis 8', 'carts · sessions'],
     ['RabbitMQ 4', 'orders queue']

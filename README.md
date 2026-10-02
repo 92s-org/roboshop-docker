@@ -45,8 +45,8 @@ docker compose down -v     # stop and delete all data (databases are re-seeded n
 | Service | Language / image | Data store | Job |
 |---|---|---|---|
 | frontend | React 19, Vite, `nginx-unprivileged:1.30-alpine` | - | UI, reverse proxy to all APIs |
-| catalogue | Node.js 24, Express 5 | MongoDB 8.0 | products, categories, search, ratings |
-| user | Node.js 24, Express 5 | MongoDB 8.0, Redis | register, login, order history, anonymous ids |
+| catalogue | Node.js 24, Express 5 | MongoDB 7.0 | products, categories, search, ratings |
+| user | Node.js 24, Express 5 | MongoDB 7.0, Redis | register, login, order history, anonymous ids |
 | cart | Node.js 24, Express 5 | Redis | cart per user, tax, shipping line |
 | shipping | Java 25, Spring Boot 4.1 | MySQL 8.4 | countries, city search, distance and cost |
 | payment | Python 3.14, Flask 3, gunicorn | RabbitMQ 4.2 | takes payment, queues the order |
@@ -62,7 +62,7 @@ docker compose down -v     # stop and delete all data (databases are re-seeded n
 | Java | 17 (code built for Java 8) | 25 (LTS) |
 | Spring Boot | 2.3 | 4.1 |
 | Frontend | AngularJS 1.6 (end of life) | React 19 + Vite |
-| MongoDB | 7.0 | 8.0 |
+| MongoDB | 7.0 | 7.0 (8.0 crashes on the RHEL course AMI, see mongodb/Dockerfile) |
 | MySQL | 8.0 | 8.4 (LTS) |
 | Redis | 7 | 8.6 |
 | RabbitMQ | 3 | 4.2 with management UI |
