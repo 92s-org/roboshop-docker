@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
-import { Activity, Search, ShoppingCart, UserRound } from 'lucide-react';
+import { Activity, Search, ShoppingBag, Truck, UserRound } from 'lucide-react';
 import Logo from './Logo.jsx';
-import { api, imageFor, money } from '../api.js';
+import ProductImage from './ProductImage.jsx';
+import { api, money } from '../api.js';
 import { useSession } from '../session.jsx';
 
 function SearchBox() {
@@ -49,10 +50,10 @@ function SearchBox() {
 
     return (
         <form className="search" onSubmit={submit} ref={boxRef} role="search">
-            <Search size={17} className="search-icon" />
+            <Search size={18} className="search-icon" />
             <input
                 type="search"
-                placeholder="Search robots, AI, droids..."
+                placeholder="Search for robots, AI assistants..."
                 value={text}
                 onChange={(e) => {
                     setText(e.target.value);
@@ -61,7 +62,6 @@ function SearchBox() {
                 onFocus={() => setOpen(true)}
                 aria-label="Search products"
             />
-            <kbd>Enter</kbd>
             {open && hits.length > 0 && (
                 <ul className="suggest">
                     {hits.map((p) => (
@@ -73,12 +73,15 @@ function SearchBox() {
                                     setText('');
                                 }}
                             >
-                                <img src={imageFor(p.sku)} alt="" />
+                                <ProductImage sku={p.sku} alt="" />
                                 <span className="suggest-name">{p.name}</span>
                                 <span className="suggest-price">{money(p.price)}</span>
                             </Link>
                         </li>
                     ))}
+                    <li className="suggest-all">
+                        <button type="submit">See all results for "{text.trim()}"</button>
+                    </li>
                 </ul>
             )}
         </form>
@@ -86,12 +89,12 @@ function SearchBox() {
 }
 
 export default function Header() {
-    const { user, cart, itemCount } = useSession();
+    const { user, itemCount, openDrawer } = useSession();
     const location = useLocation();
     const [bump, setBump] = useState(false);
     const prevCount = useRef(itemCount);
 
-    // little bounce on the cart button when items are added
+    // little bounce on the bag when items are added
     useEffect(() => {
         if (itemCount > prevCount.current) {
             setBump(true);
@@ -108,33 +111,40 @@ export default function Header() {
 
     return (
         <header className="header">
+            <div className="topbar">
+                <div className="topbar-inner">
+                    <span>
+                        <Truck size={15} /> Shipping to 25 countries · 30-day returns · 2-year warranty
+                    </span>
+                    <Link to="/status" className="topbar-link">
+                        <Activity size={14} /> System status
+                    </Link>
+                </div>
+            </div>
             <div className="header-inner">
                 <Link to="/" className="brand" aria-label="RoboShop home">
                     <Logo />
-                    <span className="brand-text">
-                        ROBO<span>SHOP</span>
-                    </span>
+                    <span className="brand-text">RoboShop</span>
                 </Link>
 
                 <nav className="nav">
-                    <NavLink to="/" end>Shop</NavLink>
-                    <NavLink to="/status">
-                        <Activity size={15} /> Status
-                    </NavLink>
+                    <NavLink to="/" end>Shop all</NavLink>
+                    <NavLink to="/?cat=Artificial%20Intelligence">AI</NavLink>
+                    <NavLink to="/?cat=Robot">Robots</NavLink>
                 </nav>
 
                 <SearchBox />
 
                 <div className="header-actions">
-                    <Link to="/account" className="pill-btn">
-                        <UserRound size={17} />
+                    <Link to="/account" className="icon-link">
+                        <UserRound size={20} />
                         <span className="hide-sm">{user ? user.name : 'Sign in'}</span>
                     </Link>
-                    <Link to="/cart" className={`cart-btn ${bump ? 'bump' : ''}`}>
-                        <ShoppingCart size={18} />
-                        <span className="hide-sm">{money(cart.total)}</span>
+                    <button className={`bag-btn ${bump ? 'bump' : ''}`} onClick={openDrawer} aria-label="Open cart">
+                        <ShoppingBag size={20} />
+                        <span className="hide-sm">Cart</span>
                         {itemCount > 0 && <span className="badge">{itemCount}</span>}
-                    </Link>
+                    </button>
                 </div>
             </div>
         </header>

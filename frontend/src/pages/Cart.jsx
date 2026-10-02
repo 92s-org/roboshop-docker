@@ -43,7 +43,7 @@ export default function Cart() {
                 <ShoppingCart size={46} className="empty-icon" />
                 <h2>Your cart is empty</h2>
                 <p>No robots assigned to this mission yet.</p>
-                <Link to="/" className="btn btn-primary">Browse the fleet</Link>
+                <Link to="/" className="btn btn-dark">Start shopping</Link>
             </div>
         );
     }
@@ -55,7 +55,7 @@ export default function Cart() {
                 <div className="panel">
                     <div className="panel-head">
                         <h2>Cart</h2>
-                        <span className="muted mono small">id: {uniqueid}</span>
+                        <span className="muted small">{items.length} item{items.length === 1 ? '' : 's'}</span>
                     </div>
                     <ul className="lines">
                         {items.map((item) => (
@@ -65,7 +65,7 @@ export default function Cart() {
                                 </Link>
                                 <div className="line-info">
                                     <Link to={`/product/${item.sku}`}>{item.name}</Link>
-                                    <span className="muted small mono">{money(item.price)} each</span>
+                                    <span className="muted small num">{money(item.price)} each</span>
                                 </div>
                                 <QtyStepper
                                     value={item.qty}
@@ -74,7 +74,7 @@ export default function Cart() {
                                     disabled={busySku === item.sku}
                                     onChange={(q) => change(item.sku, q)}
                                 />
-                                <span className="line-total mono">{money(item.subtotal)}</span>
+                                <span className="line-total num">{money(item.subtotal)}</span>
                                 <button
                                     className="icon-btn danger"
                                     onClick={() => change(item.sku, 0)}
@@ -91,12 +91,12 @@ export default function Cart() {
                 <aside className="panel summary">
                     <h3>Summary</h3>
                     <dl>
-                        <div><dt>Items</dt><dd className="mono">{items.reduce((n, i) => n + i.qty, 0)}</dd></div>
+                        <div><dt>Items</dt><dd className="num">{items.reduce((n, i) => n + i.qty, 0)}</dd></div>
                         <div><dt>Shipping</dt><dd className="muted">next step</dd></div>
-                        <div><dt>Incl. VAT (20%)</dt><dd className="mono">{money(cart.tax)}</dd></div>
-                        <div className="summary-total"><dt>Total</dt><dd className="mono">{money(cart.total)}</dd></div>
+                        <div><dt>Incl. VAT (20%)</dt><dd className="num">{money(cart.tax)}</dd></div>
+                        <div className="summary-total"><dt>Total</dt><dd className="num">{money(cart.total)}</dd></div>
                     </dl>
-                    <button className="btn btn-primary btn-wide" onClick={() => navigate('/checkout/shipping')}>
+                    <button className="btn btn-dark btn-wide" onClick={() => navigate('/checkout/shipping')}>
                         Checkout <ArrowRight size={18} />
                     </button>
                     <Link to="/" className="link-muted">Continue shopping</Link>

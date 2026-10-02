@@ -18,6 +18,10 @@ export function SessionProvider({ children }) {
     const [session, setSession] = useState(loadSession);
     const [cart, setCart] = useState(EMPTY_CART);
     const [cartLoading, setCartLoading] = useState(true);
+    // slide-out mini cart
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const openDrawer = useCallback(() => setDrawerOpen(true), []);
+    const closeDrawer = useCallback(() => setDrawerOpen(false), []);
     const { uniqueid, user } = session;
 
     useEffect(() => {
@@ -99,9 +103,10 @@ export function SessionProvider({ children }) {
         .reduce((sum, i) => sum + i.qty, 0);
 
     const value = useMemo(() => ({
-        uniqueid, user, cart, cartLoading, itemCount,
+        uniqueid, user, cart, cartLoading, itemCount, drawerOpen, openDrawer, closeDrawer,
         setCart, refreshCart, addToCart, updateQty, login, register, logout
-    }), [uniqueid, user, cart, cartLoading, itemCount, refreshCart, addToCart, updateQty, login, register, logout]);
+    }), [uniqueid, user, cart, cartLoading, itemCount, drawerOpen, openDrawer, closeDrawer,
+        refreshCart, addToCart, updateQty, login, register, logout]);
 
     return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Plus } from 'lucide-react';
+import { ShoppingBag, Star } from 'lucide-react';
 import ProductImage from './ProductImage.jsx';
-import StockBadge from './StockBadge.jsx';
 import { money } from '../api.js';
 import { useSession } from '../session.jsx';
 import { useToast } from '../toast.jsx';
 
-export default function ProductCard({ product, index = 0 }) {
-    const { addToCart } = useSession();
+export default function ProductCard({ product, rating, index = 0 }) {
+    const { addToCart, openDrawer } = useSession();
     const toast = useToast();
     const [busy, setBusy] = useState(false);
+    const soldOut = product.instock === 0;
+    const lowStock = !soldOut && product.instock <= 2;
 
     const quickAdd = async (e) => {
         e.preventDefault();
         setBusy(true);
         try {
             await addToCart(product.sku, 1);
-            toast.success('Added to cart', product.name);
+            openDrawer();
         } catch (err) {
-            toast.error('Could not add', err.message);
+            toast.error('Could not add to cart', err.message);
         } finally {
             setBusy(false);
         }
@@ -28,37 +29,33 @@ export default function ProductCard({ product, index = 0 }) {
     return (
         <Link
             to={`/product/${product.sku}`}
-            className="card product-card"
-            style={{ animationDelay: `${Math.min(index, 12) * 45}ms` }}
+            className={`product-card ${soldOut ? 'is-soldout' : ''}`}
+            style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
         >
             <div className="card-media">
-                <span className="sku mono">{product.sku}</span>
                 <ProductImage sku={product.sku} alt={product.name} />
+                <div className="card-badges">
+                    {soldOut && <span className="pill pill-dark">Sold out</span>}
+                    {lowStock && <span className="pill pill-warn">Only {product.instock} left</span>}
+                    {product.price >= 2000 && <span className="pill pill-accent">Flagship</span>}
+                </div>
+                {!soldOut && (
+                    <button className="quick-add" onClick={quickAdd} disabled={busy}>
+                        <ShoppingBag size={16} /> {busy ? 'Adding...' : 'Add to cart'}
+                    </button>
+                )}
             </div>
             <div className="card-body">
-                <div className="card-tags">
-                    {product.categories?.map((c) => (
-                        <span key={c} className="tag">{c}</span>
-                    ))}
-                </div>
+                <span className="card-cat">{product.categories?.join(' · ')}</span>
                 <h3>{product.name}</h3>
-                <p className="card-desc">{product.description}</p>
-                <div className="card-foot">
-                    <div>
-                        <div className="price">{money(product.price)}</div>
-                        <StockBadge instock={product.instock} />
-                    </div>
-                    {product.instock > 0 && (
-                        <button
-                            className="add-btn"
-                            onClick={quickAdd}
-                            disabled={busy}
-                            aria-label={`Add ${product.name} to cart`}
-                        >
-                            <Plus size={18} />
-                        </button>
-                    )}
-                </div>
+                {rating?.rating_count > 0 && (
+                    <span className="card-rating">
+                        <Star size={14} className="star-solid" />
+                        {rating.avg_rating.toFixed(1)}
+                        <span className="muted">({rating.rating_count})</span>
+                    </span>
+                )}
+                <span className="price">{money(product.price)}</span>
             </div>
         </Link>
     );

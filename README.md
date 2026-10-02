@@ -96,7 +96,12 @@ docker compose down -v     # stop and delete all data (databases are re-seeded n
 - The cart and session survive a page refresh (stored in the browser).
 
 **UI**
-- New React UI: product grid with category filter and sort, live search suggestions, product page with ratings, cart, 4-step checkout with city auto-complete, order history, and a status page.
+- New React storefront: light theme, Bricolage Grotesque + Figtree fonts (bundled, no internet needed), real product photos.
+- Home page with hero, category tiles, filter chips and sorting (featured, top rated, price, name).
+- Product cards with stock badges, star ratings and a quick "Add to cart".
+- Slide-out cart drawer, product page with "Buy now", reviews and delivery/returns info.
+- 4-step checkout with city auto-complete, order history, and a live `/status` page for the labs.
+- Product photos are public domain (CC0 / PDM), see `frontend/public/images/CREDITS.md`.
 
 ---
 
@@ -113,6 +118,7 @@ All calls go through the frontend: `http://localhost/api/<service>/<path>`.
 | GET | `/products/:category` | `[]` if no products in that category |
 | GET | `/categories` | |
 | GET | `/search/:text` | full-text search |
+| GET | `/ratings` | ratings of all products `{sku: {avg_rating, rating_count}}` |
 | GET | `/ratings/:sku` | `{avg_rating, rating_count}` |
 | PUT | `/rate/:sku/:score` | score 1-5 |
 | GET | `/metrics` | Prometheus |

@@ -88,12 +88,12 @@ function AuthForms() {
                     </label>
                 )}
                 {error && <div className="alert alert-error">{error}</div>}
-                <button className="btn btn-primary btn-wide" disabled={busy}>
+                <button className="btn btn-dark btn-wide" disabled={busy}>
                     {busy ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}
                 </button>
                 {mode === 'login' && (
                     <p className="muted small center">
-                        Demo account: <span className="mono">roboshop</span> / <span className="mono">RoboShop@1</span>
+                        Demo account: <span className="num">roboshop</span> / <span className="num">RoboShop@1</span>
                     </p>
                 )}
             </form>
@@ -117,7 +117,7 @@ function OrderHistory({ name }) {
             <div className="empty small-empty">
                 <Package size={36} className="empty-icon" />
                 <p>No orders yet.</p>
-                <Link to="/" className="btn btn-ghost">Start shopping</Link>
+                <Link to="/" className="btn btn-light">Start shopping</Link>
             </div>
         );
     }
@@ -127,14 +127,14 @@ function OrderHistory({ name }) {
             {history.map((o) => (
                 <li key={o.orderid} className={open === o.orderid ? 'open' : ''}>
                     <button className="order-head" onClick={() => setOpen(open === o.orderid ? null : o.orderid)}>
-                        <span className="mono order-num">#{o.orderid.slice(0, 8)}</span>
+                        <span className="order-num">#{o.orderid.slice(0, 8)}</span>
                         <span className="muted small">
                             {o.placedAt ? new Date(o.placedAt).toLocaleString() : ''}
                         </span>
                         <span className="muted small">
                             {o.cart.items.filter((i) => i.sku !== 'SHIP').length} item(s)
                         </span>
-                        <strong className="mono">{money(o.cart.total)}</strong>
+                        <strong className="num">{money(o.cart.total)}</strong>
                         <ChevronDown size={18} className="chev" />
                     </button>
                     {open === o.orderid && (
@@ -143,8 +143,8 @@ function OrderHistory({ name }) {
                                 {o.cart.items.map((i) => (
                                     <tr key={i.sku} className={i.sku === 'SHIP' ? 'row-ship' : ''}>
                                         <td>{i.name}</td>
-                                        <td className="num mono">× {i.qty}</td>
-                                        <td className="num mono">{money(i.subtotal)}</td>
+                                        <td className="num num">× {i.qty}</td>
+                                        <td className="num num">{money(i.subtotal)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -164,8 +164,7 @@ export default function Account() {
         return (
             <section className="section auth-wrap">
                 <div className="auth-intro">
-                    <span className="eyebrow mono">// pilot access</span>
-                    <h1>Sign in to your hangar.</h1>
+                                        <h1>Welcome back.</h1>
                     <p className="muted">
                         Keep your cart across devices and see every order you've placed.
                         Anything in your cart now comes with you when you sign in.
@@ -179,13 +178,13 @@ export default function Account() {
     return (
         <section className="section">
             <div className="profile panel">
-                <div className="avatar mono">{user.name.slice(0, 2).toUpperCase()}</div>
+                <div className="avatar num">{user.name.slice(0, 2).toUpperCase()}</div>
                 <div>
                     <h1>{user.name}</h1>
                     <p className="muted">{user.email}</p>
                 </div>
                 <button
-                    className="btn btn-ghost"
+                    className="btn btn-light"
                     onClick={() => {
                         logout();
                         toast.info('Signed out');
@@ -196,8 +195,7 @@ export default function Account() {
             </div>
             <div className="section-head">
                 <div>
-                    <span className="eyebrow mono">// deployments</span>
-                    <h2>Order history</h2>
+                                        <h2>Order history</h2>
                 </div>
             </div>
             <OrderHistory name={user.name} />

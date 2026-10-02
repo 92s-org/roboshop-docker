@@ -54,8 +54,7 @@ export default function Status() {
         <section className="section">
             <div className="section-head">
                 <div>
-                    <span className="eyebrow mono">// observability</span>
-                    <h2>System status</h2>
+                                        <h2>System status</h2>
                     <p className="muted">
                         Live health checks for every microservice, refreshed every 10 seconds.
                         Stop a container and watch it go red.
@@ -63,8 +62,8 @@ export default function Status() {
                 </div>
                 <div className="status-summary">
                     <span className={`big-dot ${up === SERVICES.length ? 'ok' : 'bad'}`} />
-                    <span className="mono">{up}/{SERVICES.length} healthy</span>
-                    <button className="btn btn-ghost" onClick={check} disabled={running}>
+                    <span className="num">{up}/{SERVICES.length} healthy</span>
+                    <button className="btn btn-light" onClick={check} disabled={running}>
                         <RefreshCw size={16} className={running ? 'spin' : ''} /> Recheck
                     </button>
                 </div>
@@ -81,7 +80,7 @@ export default function Status() {
                                 <h3>{s.name}</h3>
                                 <span className="tag">{s.tech}</span>
                             </header>
-                            <div className="status-meta mono">
+                            <div className="status-meta num">
                                 <span>GET {s.url}</span>
                                 <span>
                                     {r ? `${r.code || 'ERR'} · ${r.ms} ms` : '...'}
@@ -89,15 +88,15 @@ export default function Status() {
                             </div>
                             {s.deps.length > 0 && (
                                 <div className="deps">
-                                    depends on {s.deps.map((d) => <span key={d} className="mono">{d}</span>)}
+                                    depends on {s.deps.map((d) => <span key={d} className="num">{d}</span>)}
                                 </div>
                             )}
-                            <pre className="mono">{r?.body || 'waiting...'}</pre>
+                            <pre className="code">{r?.body || 'waiting...'}</pre>
                         </article>
                     );
                 })}
             </div>
-            {checkedAt && <p className="muted small mono">last check {checkedAt.toLocaleTimeString()}</p>}
+            {checkedAt && <p className="muted small num">last check {checkedAt.toLocaleTimeString()}</p>}
         </section>
     );
 }

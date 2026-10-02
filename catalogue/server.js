@@ -146,6 +146,16 @@ app.get('/search/:text', requireDb, async (req, res) => {
     res.json(hits);
 });
 
+// ratings of all products in one call (for product cards)
+app.get('/ratings', requireDb, async (req, res) => {
+    const docs = await ratings.find({}).toArray();
+    const result = {};
+    for (const doc of docs) {
+        result[doc.sku] = { avg_rating: doc.sum / doc.count, rating_count: doc.count };
+    }
+    res.json(result);
+});
+
 // rating for a product
 app.get('/ratings/:sku', requireDb, async (req, res) => {
     const doc = await ratings.findOne({ sku: req.params.sku });

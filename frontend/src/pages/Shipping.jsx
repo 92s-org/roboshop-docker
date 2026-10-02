@@ -93,7 +93,7 @@ export default function Shipping() {
             <div className="empty">
                 <h2>Nothing to ship</h2>
                 <p>Add a robot to your cart first.</p>
-                <Link to="/" className="btn btn-primary">Browse the fleet</Link>
+                <Link to="/" className="btn btn-dark">Start shopping</Link>
             </div>
         );
     }
@@ -104,7 +104,7 @@ export default function Shipping() {
             <div className="checkout">
                 <div className="panel">
                     <div className="panel-head">
-                        <h2>Where should we deploy?</h2>
+                        <h2>Where should we ship?</h2>
                     </div>
                     {error && <div className="alert alert-error">{error}</div>}
 
@@ -142,7 +142,7 @@ export default function Shipping() {
                                     <li key={m.uuid}>
                                         <button type="button" onClick={() => pickCity(m)}>
                                             <span className="suggest-name">{m.name}</span>
-                                            <span className="muted small mono">{m.code.toUpperCase()} · region {m.region}</span>
+                                            <span className="muted small num">{m.code.toUpperCase()} · region {m.region}</span>
                                         </button>
                                     </li>
                                 ))}
@@ -150,25 +150,25 @@ export default function Shipping() {
                         )}
                     </label>
 
-                    {busy && !quote && <p className="muted mono">Calculating route...</p>}
+                    {busy && !quote && <p className="muted num">Calculating route...</p>}
 
                     {quote && (
                         <div className="quote">
                             <div className="quote-route">
-                                <span className="mono small muted">Hangar 7, DE</span>
+                                <span className="num small muted">Our warehouse, DE</span>
                                 <span className="quote-line">
                                     <Route size={18} />
                                 </span>
-                                <span className="mono small muted">{city.name}</span>
+                                <span className="num small muted">{city.name}</span>
                             </div>
                             <div className="quote-figures">
                                 <div>
                                     <span className="muted small">Distance</span>
-                                    <strong className="mono">{quote.distance.toLocaleString()} km</strong>
+                                    <strong className="num">{quote.distance.toLocaleString()} km</strong>
                                 </div>
                                 <div>
                                     <span className="muted small">Shipping cost</span>
-                                    <strong className="mono">{money(quote.cost)}</strong>
+                                    <strong className="num">{money(quote.cost)}</strong>
                                 </div>
                             </div>
                         </div>
@@ -178,14 +178,14 @@ export default function Shipping() {
                 <aside className="panel summary">
                     <h3>Summary</h3>
                     <dl>
-                        <div><dt>Robots</dt><dd className="mono">{money(cart.total)}</dd></div>
-                        <div><dt>Shipping</dt><dd className="mono">{quote ? money(quote.cost) : '--'}</dd></div>
+                        <div><dt>Robots</dt><dd className="num">{money(cart.total)}</dd></div>
+                        <div><dt>Shipping</dt><dd className="num">{quote ? money(quote.cost) : '--'}</dd></div>
                         <div className="summary-total">
                             <dt>Total</dt>
-                            <dd className="mono">{money(cart.total + (quote?.cost ?? 0))}</dd>
+                            <dd className="num">{money(cart.total + (quote?.cost ?? 0))}</dd>
                         </div>
                     </dl>
-                    <button className="btn btn-primary btn-wide" disabled={!quote || busy} onClick={confirm}>
+                    <button className="btn btn-dark btn-wide" disabled={!quote || busy} onClick={confirm}>
                         Continue to payment <ArrowRight size={18} />
                     </button>
                     <Link to="/cart" className="link-muted">Back to cart</Link>

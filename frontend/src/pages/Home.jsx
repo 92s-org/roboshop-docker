@@ -1,20 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ArrowDown, Cpu, PackageCheck, Truck } from 'lucide-react';
-import { api } from '../api.js';
+import { ArrowRight, RotateCcw, ShieldCheck, Truck, Wrench } from 'lucide-react';
+import { api, loadRatings } from '../api.js';
 import ProductCard from '../components/ProductCard.jsx';
 import Spinner from '../components/Spinner.jsx';
 
 const SORTS = {
     featured: { label: 'Featured', fn: null },
+    rating: { label: 'Top rated', fn: null },
     'price-asc': { label: 'Price: low to high', fn: (a, b) => a.price - b.price },
     'price-desc': { label: 'Price: high to low', fn: (a, b) => b.price - a.price },
-    name: { label: 'Name A-Z', fn: (a, b) => a.name.localeCompare(b.name) }
+    name: { label: 'Name A–Z', fn: (a, b) => a.name.localeCompare(b.name) }
 };
+
+const CATEGORY_TILES = [
+    { cat: 'Artificial Intelligence', title: 'AI assistants', text: 'Thinking machines for home and office', img: '/images/Ewooid.jpg' },
+    { cat: 'Robot', title: 'Robots', text: 'Explorers, workers and loyal companions', img: '/images/HPTD.jpg' }
+];
+
+const PERKS = [
+    { icon: Truck, title: 'Ships to 25 countries', text: 'Priced by distance at checkout' },
+    { icon: RotateCcw, title: '30-day returns', text: 'Changed your mind? No problem' },
+    { icon: ShieldCheck, title: '2-year warranty', text: 'On every robot we sell' },
+    { icon: Wrench, title: 'Free firmware updates', text: 'For the lifetime of your unit' }
+];
 
 export default function Home() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [ratings, setRatings] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [params, setParams] = useSearchParams();
@@ -29,15 +43,29 @@ export default function Home() {
             })
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
+        loadRatings({ refresh: true }).then(setRatings);
     }, []);
+
+    // a category link from the header scrolls straight to the products
+    useEffect(() => {
+        if (params.get('cat')) {
+            document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [params]);
 
     const visible = useMemo(() => {
         let list = category === 'All' ? products : products.filter((p) => p.categories?.includes(category));
-        const sorter = SORTS[sort]?.fn;
-        if (sorter) list = [...list].sort(sorter);
-        else list = [...list].sort((a, b) => (b.instock > 0) - (a.instock > 0));
+        list = [...list];
+        if (sort === 'rating') {
+            list.sort((a, b) => (ratings[b.sku]?.avg_rating ?? 0) - (ratings[a.sku]?.avg_rating ?? 0));
+        } else if (SORTS[sort]?.fn) {
+            list.sort(SORTS[sort].fn);
+        } else {
+            // featured: available products first
+            list.sort((a, b) => (b.instock > 0) - (a.instock > 0));
+        }
         return list;
-    }, [products, category, sort]);
+    }, [products, category, sort, ratings]);
 
     const setParam = (key, value, fallback) => {
         const next = new URLSearchParams(params);
@@ -46,67 +74,68 @@ export default function Home() {
         setParams(next, { replace: true });
     };
 
-    const inStock = products.filter((p) => p.instock > 0).length;
-
     return (
         <>
             <section className="hero">
                 <div className="hero-copy">
-                    <span className="eyebrow mono">// fleet catalogue 2026</span>
-                    <h1>
-                        Robots for <em>every</em> mission.
-                    </h1>
+                    <span className="kicker">New season · 2026 collection</span>
+                    <h1>The robot you didn't know you needed.</h1>
                     <p>
-                        Harvesters, medics, enforcers and one very curious observability guru.
-                        Hand-picked machines, shipped from our hangar to 25 countries.
+                        From pocket-sized companions to planet rovers, every machine is tested in our
+                        German workshop and delivered ready to work.
                     </p>
                     <div className="hero-actions">
-                        <a href="#catalogue" className="btn btn-primary">
-                            Browse the fleet <ArrowDown size={17} />
+                        <a href="#shop" className="btn btn-dark">
+                            Shop the collection <ArrowRight size={18} />
                         </a>
-                        <Link to="/product/STAN-1" className="btn btn-ghost">Meet Stan</Link>
+                        <Link to="/product/HPTD" className="btn btn-light">See the Travel Droid</Link>
                     </div>
-                    <dl className="hero-stats">
-                        <div>
-                            <dt className="mono">{products.length || '--'}</dt>
-                            <dd>models</dd>
-                        </div>
-                        <div>
-                            <dt className="mono">{inStock || '--'}</dt>
-                            <dd>ready to ship</dd>
-                        </div>
-                        <div>
-                            <dt className="mono">25</dt>
-                            <dd>countries</dd>
-                        </div>
-                    </dl>
                 </div>
-                <div className="hero-visual" aria-hidden="true">
-                    <div className="orbit orbit-1" />
-                    <div className="orbit orbit-2" />
-                    <div className="pedestal" />
-                    <img src="/images/stan.png" alt="" className="hero-robot" />
-                    <div className="hud-chip hud-chip-1 mono">
-                        <span className="dot ok" /> SYS ONLINE
-                    </div>
-                    <div className="hud-chip hud-chip-2 mono">UNIT · STAN-1</div>
+                <div className="hero-media">
+                    <img src="/images/hero.jpg" alt="A shelf of colourful toy robots" />
+                    <Link to="/product/SHCE" className="hero-tag">
+                        <span className="hero-tag-img"><img src="/images/SHCE.jpg" alt="" /></span>
+                        <span>
+                            <strong>Strategic Human Control Emulator</strong>
+                            <span className="muted">Diplomacy, solved · €300</span>
+                        </span>
+                    </Link>
                 </div>
             </section>
 
             <section className="perks">
-                <div><Truck size={20} /> <span><strong>Tracked shipping</strong> priced by distance</span></div>
-                <div><PackageCheck size={20} /> <span><strong>Live stock</strong> straight from the catalogue</span></div>
-                <div><Cpu size={20} /> <span><strong>Firmware</strong> included with every unit</span></div>
+                {PERKS.map(({ icon: Icon, title, text }) => (
+                    <div key={title}>
+                        <Icon size={22} strokeWidth={1.75} />
+                        <span>
+                            <strong>{title}</strong>
+                            <span className="muted">{text}</span>
+                        </span>
+                    </div>
+                ))}
             </section>
 
-            <section id="catalogue" className="section">
+            <section className="tiles">
+                {CATEGORY_TILES.map((t) => (
+                    <button key={t.cat} className="tile" onClick={() => setParam('cat', t.cat, 'All')}>
+                        <img src={t.img} alt="" />
+                        <span className="tile-text">
+                            <strong>{t.title}</strong>
+                            <span>{t.text}</span>
+                            <span className="tile-cta">Shop now <ArrowRight size={16} /></span>
+                        </span>
+                    </button>
+                ))}
+            </section>
+
+            <section id="shop" className="section">
                 <div className="section-head">
                     <div>
-                        <span className="eyebrow mono">// catalogue</span>
-                        <h2>{category === 'All' ? 'The full fleet' : category}</h2>
+                        <h2>{category === 'All' ? 'All products' : category === 'Robot' ? 'Robots' : 'AI assistants'}</h2>
+                        <p className="muted">{visible.length} products</p>
                     </div>
                     <label className="select">
-                        <span className="sr-only">Sort</span>
+                        <span>Sort by</span>
                         <select value={sort} onChange={(e) => setParam('sort', e.target.value, 'featured')}>
                             {Object.entries(SORTS).map(([key, s]) => (
                                 <option key={key} value={key}>{s.label}</option>
@@ -124,24 +153,21 @@ export default function Home() {
                             className={`chip ${category === c ? 'active' : ''}`}
                             onClick={() => setParam('cat', c, 'All')}
                         >
-                            {c}
-                            <span className="chip-count mono">
-                                {c === 'All' ? products.length : products.filter((p) => p.categories?.includes(c)).length}
-                            </span>
+                            {c === 'All' ? 'All' : c === 'Robot' ? 'Robots' : 'AI assistants'}
                         </button>
                     ))}
                 </div>
 
-                {loading && <Spinner label="Loading fleet" />}
+                {loading && <Spinner label="Loading products" />}
                 {error && (
                     <div className="alert alert-error">
-                        Catalogue unavailable: {error}. Check the <Link to="/status">status page</Link>.
+                        We couldn't load the products ({error}). Check the <Link to="/status">system status</Link>.
                     </div>
                 )}
                 {!loading && !error && (
                     <div className="grid">
                         {visible.map((p, i) => (
-                            <ProductCard key={p.sku} product={p} index={i} />
+                            <ProductCard key={p.sku} product={p} rating={ratings[p.sku]} index={i} />
                         ))}
                     </div>
                 )}

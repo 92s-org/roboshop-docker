@@ -1,17 +1,9 @@
+import { Link } from 'react-router';
 import { useSession } from '../session.jsx';
 import Logo from './Logo.jsx';
 
-const STACK = [
-    ['React 19', 'frontend'],
-    ['Nginx 1.30', 'web / proxy'],
-    ['Node.js 24', 'catalogue · user · cart'],
-    ['Python 3.14', 'payment'],
-    ['Java 25', 'shipping'],
-    ['MongoDB 7', 'products · users'],
-    ['MySQL 8.4', 'cities'],
-    ['Redis 8', 'carts · sessions'],
-    ['RabbitMQ 4', 'orders queue']
-];
+// the real tech stack, handy for the DevOps labs
+const STACK = ['React 19', 'Nginx 1.30', 'Node.js 24', 'Python 3.14', 'Java 25', 'MongoDB 7', 'MySQL 8.4', 'Redis 8', 'RabbitMQ 4'];
 
 export default function Footer() {
     const { uniqueid } = useSession();
@@ -19,22 +11,38 @@ export default function Footer() {
         <footer className="footer">
             <div className="footer-inner">
                 <div className="footer-brand">
-                    <Logo size={28} />
-                    <div>
-                        <strong>RoboShop</strong>
-                        <p>A microservices shop for DevOps labs. Every request crosses real services.</p>
-                    </div>
+                    <Link to="/" className="brand">
+                        <Logo />
+                        <span className="brand-text">RoboShop</span>
+                    </Link>
+                    <p>Robots and AI assistants for home, work and the far side of the galaxy.</p>
                 </div>
-                <ul className="stack">
-                    {STACK.map(([name, role]) => (
-                        <li key={name}>
-                            <span>{name}</span>
-                            <small>{role}</small>
-                        </li>
-                    ))}
-                </ul>
-                <div className="footer-meta mono">
-                    session <span>{uniqueid ?? '...'}</span>
+                <div className="footer-col">
+                    <h4>Shop</h4>
+                    <Link to="/">All products</Link>
+                    <Link to="/?cat=Artificial%20Intelligence">AI assistants</Link>
+                    <Link to="/?cat=Robot">Robots</Link>
+                </div>
+                <div className="footer-col">
+                    <h4>Account</h4>
+                    <Link to="/account">Sign in / Register</Link>
+                    <Link to="/account">Order history</Link>
+                    <Link to="/cart">Cart</Link>
+                </div>
+                <div className="footer-col">
+                    <h4>Help</h4>
+                    <Link to="/status">System status</Link>
+                    <span>Shipping from Germany</span>
+                    <span>30-day returns</span>
+                </div>
+            </div>
+            <div className="footer-bottom">
+                <div className="footer-bottom-inner">
+                    <span>© 2026 RoboShop · a microservices demo shop</span>
+                    <span className="stack">
+                        {STACK.map((s) => <span key={s}>{s}</span>)}
+                    </span>
+                    <span className="muted">session: {uniqueid ?? '...'}</span>
                 </div>
             </div>
         </footer>

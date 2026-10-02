@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
+import CartDrawer from './components/CartDrawer.jsx';
 import Home from './pages/Home.jsx';
 import Product from './pages/Product.jsx';
 import Search from './pages/Search.jsx';
@@ -13,10 +14,10 @@ import Status from './pages/Status.jsx';
 function NotFound() {
     return (
         <div className="empty">
-            <span className="eyebrow mono">error 404</span>
-            <h2>This sector is empty</h2>
+            <span className="kicker">Error 404</span>
+            <h2>Page not found</h2>
             <p>The page you are looking for does not exist.</p>
-            <Link to="/" className="btn btn-primary">Back to the fleet</Link>
+            <Link to="/" className="btn btn-dark">Back to the shop</Link>
         </div>
     );
 }
@@ -39,6 +40,7 @@ export default function App() {
                 </Routes>
             </main>
             <Footer />
+            <CartDrawer />
         </div>
     );
 }

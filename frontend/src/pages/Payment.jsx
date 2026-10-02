@@ -35,14 +35,14 @@ export default function Payment() {
                         <CircleCheckBig size={54} />
                     </div>
                     <h1>Order confirmed</h1>
-                    <p className="muted">Your robots are being prepared for deployment.</p>
-                    <div className="order-id mono">
+                    <p className="muted">Thank you! We're packing your robots and will ship them soon.</p>
+                    <div className="order-id num">
                         <span>order id</span>
                         {order.orderid}
                     </div>
                     <div className="hero-actions center">
-                        <Link to="/" className="btn btn-primary">Continue shopping</Link>
-                        {user && <Link to="/account" className="btn btn-ghost">View order history</Link>}
+                        <Link to="/" className="btn btn-dark">Continue shopping</Link>
+                        {user && <Link to="/account" className="btn btn-light">View order history</Link>}
                     </div>
                     {!user && (
                         <p className="muted small">
@@ -75,7 +75,7 @@ export default function Payment() {
                     <table className="table">
                         <thead>
                             <tr>
-                                <th>Unit</th>
+                                <th>Item</th>
                                 <th className="num">Qty</th>
                                 <th className="num">Subtotal</th>
                             </tr>
@@ -84,14 +84,14 @@ export default function Payment() {
                             {items.map((i) => (
                                 <tr key={i.sku}>
                                     <td>{i.name}</td>
-                                    <td className="num mono">{i.qty}</td>
-                                    <td className="num mono">{money(i.subtotal)}</td>
+                                    <td className="num num">{i.qty}</td>
+                                    <td className="num num">{money(i.subtotal)}</td>
                                 </tr>
                             ))}
                             <tr className="row-ship">
                                 <td>{ship.name}</td>
-                                <td className="num mono">1</td>
-                                <td className="num mono">{money(ship.subtotal)}</td>
+                                <td className="num num">1</td>
+                                <td className="num num">{money(ship.subtotal)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -101,14 +101,14 @@ export default function Payment() {
                     <h3>Payment</h3>
                     <div className="fake-card">
                         <CreditCard size={22} />
-                        <span className="mono">•••• •••• •••• 2026</span>
+                        <span className="num">•••• •••• •••• 2026</span>
                         <span className="muted small">Demo card, no real charge</span>
                     </div>
                     <dl>
-                        <div><dt>Incl. VAT (20%)</dt><dd className="mono">{money(cart.tax)}</dd></div>
-                        <div className="summary-total"><dt>Total</dt><dd className="mono">{money(cart.total)}</dd></div>
+                        <div><dt>Incl. VAT (20%)</dt><dd className="num">{money(cart.tax)}</dd></div>
+                        <div className="summary-total"><dt>Total</dt><dd className="num">{money(cart.total)}</dd></div>
                     </dl>
-                    <button className="btn btn-primary btn-wide" onClick={pay} disabled={busy}>
+                    <button className="btn btn-dark btn-wide" onClick={pay} disabled={busy}>
                         <LockKeyhole size={17} /> {busy ? 'Processing...' : `Pay ${money(cart.total)}`}
                     </button>
                     <Link to="/checkout/shipping" className="link-muted">Change shipping</Link>

@@ -45,4 +45,13 @@ export async function api(path, { method = 'GET', body, signal } = {}) {
 const euro = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
 export const money = (n) => euro.format(Number(n) || 0);
 
-export const imageFor = (sku) => `/images/${sku}.png`;
+export const imageFor = (sku) => `/images/${sku}.jpg`;
+
+// ratings of every product, fetched once and shared by all product cards
+let ratingsPromise = null;
+export function loadRatings({ refresh = false } = {}) {
+    if (!ratingsPromise || refresh) {
+        ratingsPromise = api('/catalogue/ratings').catch(() => ({}));
+    }
+    return ratingsPromise;
+}
